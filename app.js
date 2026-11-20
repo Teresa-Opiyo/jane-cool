@@ -85,7 +85,7 @@ function def(){
  var tasks=[];Object.keys(SEED).forEach(function(k){SEED[k].forEach(function(t){tasks.push({id:uid(),cer:k==='General'?'general':k.toLowerCase(),text:t,done:false})})});
  return{region:'KE',cur:'KES',cur2:'USD',rate:'',names:'',date:'',inviteTpl:DEFAULT_TPL,lang:detectLang(),
   ceremonies:cers,tasks:tasks,total:'',budget:[],guests:[],members:[],pay:{mpesa:'',paybill:'',account:'',till:'',other:''},priv:{names:true,amounts:true,pay:true},
-  meet:{title:'Wedding committee meeting',date:'',time:'',place:'',link:''},vendors:[],venues:[],event:'wedding',setup:false,guestTarget:0}
+  meet:{title:'Wedding committee meeting',date:'',time:'',place:'',link:''},vendors:[],venues:[],event:'wedding',setup:false,guestTarget:0,site:null}
 }
 function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r),d=def();Object.keys(d).forEach(function(k){if(o[k]===undefined)o[k]=d[k]});return o}}catch(e){}return def()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device')}}
@@ -140,7 +140,7 @@ function vHome(){
  var dl=daysLeft(),h='';
  var sub=S.names?esc(S.names):'Add your names in Settings';
  var big=dl===null?'Set your date':(dl>0?dl+' days to go':(dl===0?'Today is the day':Math.abs(dl)+' days since the wedding'));
- h+='<div class="card hero"><div class="eyebrow">Bride <span class="v">V</span>illa</div><h2>'+sub+'</h2><div style="font-size:26px;font-weight:700">'+esc(big)+'</div><div>'+esc(S.date?niceDate(S.date):'Choose a date when you are ready')+'</div></div>';
+ h+='<div class="card hero">'+botan('r')+'<div class="eyebrow">Bride <span class="v">V</span>illa</div><h2>'+sub+'</h2><div class="countdown">'+esc(big)+'</div><div class="note">'+esc(S.date?niceDate(S.date):'Choose a date when you are ready')+'</div></div>';
  h+='<div class="card"><h3>Event type</h3><div class="row"><button class="chip on">Bride Villa (weddings)</button><span class="chip soon">Birthday Villa: coming soon</span><span class="chip soon">Graduation Villa: coming soon</span><span class="chip soon">Baby Shower Villa: coming soon</span></div></div>';
  var vis=visibleTasks(),done=vis.filter(function(t){return t.done}).length,tot=vis.length,bt=budgetTotals(),pt=pledgeTotals();
  var yes=S.guests.filter(function(g){return g.rsvp==='yes'}).length;
@@ -200,7 +200,7 @@ function vGuests(){
  h+='<div class="card" id="guestlist">';
  if(!gs.length)h+='<div class="empty">No guests to show.</div>';
  gs.forEach(function(g){var r=g.rsvp||'pending',lbl={yes:'Yes',no:'No',pending:'Waiting'}[r];
-  h+='<div class="item"><div class="grow"><div class="name">'+esc(g.name)+(num(g.plus)?' +'+num(g.plus):'')+'</div><div class="meta">'+esc(g.side)+' | '+esc((g.cers||[]).map(cerName).join(', ')||'no ceremony')+(g.phone?' | '+esc(g.phone):'')+(g.diet?' | '+esc(g.diet):'')+'</div><div class="row" style="margin-top:6px"><button class="pill '+r+'" data-act="rsvp" data-id="'+g.id+'" style="border:0;cursor:pointer">'+lbl+'</button>'+(g.phone?'<a class="btn wa sm" target="_blank" rel="noopener" href="'+esc(waLink(g.phone,inviteMsg(g)))+'">WhatsApp invite</a>':'')+(g.email?'<a class="btn sec sm" href="'+esc(mailLink(g.email,'Invitation',inviteMsg(g)))+'">Email invite</a>':'')+'<button class="btn sec sm" data-act="editg" data-id="'+g.id+'">Edit</button><button class="btn del sm" data-act="delg" data-id="'+g.id+'">Delete</button></div></div></div>'});
+  h+='<div class="item"><span class="num">'+(S.guests.indexOf(g)+1)+'</span><div class="grow"><div class="name">'+esc(g.name)+(num(g.plus)?' +'+num(g.plus):'')+'</div><div class="meta">'+esc(g.side)+' | '+esc((g.cers||[]).map(cerName).join(', ')||'no ceremony')+(g.phone?' | '+esc(g.phone):'')+(g.diet?' | '+esc(g.diet):'')+'</div><div class="row" style="margin-top:6px"><button class="pill '+r+'" data-act="rsvp" data-id="'+g.id+'" style="border:0;cursor:pointer">'+lbl+'</button>'+(g.phone?'<a class="btn wa sm" target="_blank" rel="noopener" href="'+esc(waLink(g.phone,inviteMsg(g)))+'">WhatsApp invite</a>':'')+(g.email?'<a class="btn sec sm" href="'+esc(mailLink(g.email,'Invitation',inviteMsg(g)))+'">Email invite</a>':'')+'<button class="btn sec sm" data-act="editg" data-id="'+g.id+'">Edit</button><button class="btn del sm" data-act="delg" data-id="'+g.id+'">Delete</button></div></div></div>'});
  return h+'</div>';
 }
 function copyField(label,val,key){return'<div class="copyrow"><label>'+esc(label)+'<input data-pay="'+key+'" value="'+esc(val)+'"></label><button class="btn sec sm" data-act="copy" data-key="'+key+'">Copy</button></div>'}
@@ -320,7 +320,7 @@ function wizInit(){
 function bub(label,act,k,v,on,off){return'<button type="button" class="chip big'+(on?' on':'')+(off?' soon':'')+'"'+(off?' disabled':' data-act="'+act+'" data-k="'+k+'" data-v="'+esc(v)+'"')+'>'+esc(label)+'</button>'}
 function vWizard(){
  if(!W)wizInit();
- var N=6,st=W.step,h='<div class="card hero"><div class="eyebrow">Welcome to Jane Cool</div><h2>A few quick questions</h2><p style="margin:4px 0 0">They help us tailor your plan. You can change every answer later.</p></div>';
+ var N=6,st=W.step,h='<div class="card hero big">'+botan('l')+botan('r')+'<div class="eyebrow">Welcome to</div><h1><span class="j">J</span>ane <span class="j">C</span>ool</h1><p>Plan the celebration you have been dreaming of. A few quick questions help us tailor your plan, and you can change every answer later.</p></div>';
  h+='<div class="card"><div class="row between"><span class="note">Question '+(st+1)+' of '+N+'</span><button class="btn sec sm" data-act="wzskip">Skip, I will explore on my own</button></div>'+bar((st+1)/N*100);
  if(st===0){
   h+='<h3>What are you planning?</h3><div class="row">'+bub('Bride Villa: a wedding','wzpick','event','wedding',true)+bub('Birthday Villa: coming soon','','','',false,true)+bub('Graduation Villa: coming soon','','','',false,true)+bub('Baby Shower Villa: coming soon','','','',false,true)+'</div>';
@@ -344,7 +344,41 @@ function loadPartners(){
   if(j&&typeof j==='object'){PARTNERS={disclosure:String(j.disclosure||''),vendors:Array.isArray(j.vendors)?j.vendors:[],shop:Array.isArray(j.shop)?j.shop:[]};if(tab==='vendors'||tab==='shop')render(true)}
  }).catch(function(){});
 }
-var VIEWS={shop:vShop,home:vHome,checklist:vChecklist,budget:vBudget,guests:vGuests,committee:vCommittee,vendors:vVendors,venues:vVenues,settings:vSettings};
+function botan(cls){
+ var P=[[30,250],[45,170],[90,90],[170,20]],out='',k;
+ function bz(t){var u=1-t;return[u*u*u*P[0][0]+3*u*u*t*P[1][0]+3*u*t*t*P[2][0]+t*t*t*P[3][0],u*u*u*P[0][1]+3*u*u*t*P[1][1]+3*u*t*t*P[2][1]+t*t*t*P[3][1]]}
+ for(k=1;k<=10;k++){var t=k/11,a=bz(t),b=bz(t+.01),ang=Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI,side=k%2?-1:1;
+  out+='<ellipse rx="'+(17-k*.6).toFixed(1)+'" ry="6.5" transform="translate('+a[0].toFixed(1)+' '+a[1].toFixed(1)+') rotate('+(ang+side*50).toFixed(1)+') translate(14 0)"/>'}
+ return'<svg class="botan '+cls+'" viewBox="0 0 200 260" aria-hidden="true"><path d="M30 250C45 170 90 90 170 20" fill="none" stroke="#7b8a62" stroke-width="2" opacity=".7"/><g fill="#7b8a62" fill-opacity=".28" stroke="#7b8a62" stroke-opacity=".5" stroke-width=".8">'+out+'</g><g fill="#d8c08c"><circle cx="176" cy="16" r="3.2"/><circle cx="186" cy="30" r="2.4"/><circle cx="60" cy="236" r="2.6"/></g></svg>';
+}
+var THEMES=[['sage','Sage'],['blush','Blush'],['champagne','Champagne']];
+function siteData(){
+ var st=S.site||{},ev=[];
+ activeCers().forEach(function(c){var e=(st.ev&&st.ev[c.id])||{};ev.push({i:c.id,n:c.name,d:e.d||S.date||'',t:e.t||'',p:e.p||'',m:safeUrl(e.m)})});
+ var o={v:1,n:S.names||'',d:S.date||'',t:st.tagline||'',s:st.story||'',dr:st.dress||'',rp:normPhone(st.rsvp||''),rb:st.rsvpBy||'',th:st.theme||'sage',l:curLang(),ev:ev};
+ if(st.contrib){var p=S.pay||{},c={};if(p.mpesa)c.mp=p.mpesa;if(p.paybill)c.pb=p.paybill;if(p.account)c.ac=p.account;if(p.till)c.tl=p.till;if(p.other)c.ot=p.other;o.c=c}
+ return o;
+}
+function siteLink(){
+ var j=JSON.stringify(siteData()),b=btoa(unescape(encodeURIComponent(j))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+ return new URL('w.html',location.href).href+'#'+b;
+}
+function vSite(){
+ var st=S.site||{},h='<h2>Wedding page</h2><p class="lead">Create a simple page for your guests with the details of your day. Your planning stays private. Only what you enter here is shared.</p>';
+ h+='<div class="card"><p class="note">Anyone who has your link can see this page, so do not add anything private. If you share payment details, they will be visible to everyone with the link.</p></div>';
+ h+='<form class="card f" data-form="site"><label>Your names<input name="names" value="'+esc(S.names)+'" placeholder="e.g. Amina and David"></label><label>Short welcome line<input name="tagline" value="'+esc(st.tagline||'')+'" placeholder="e.g. We are getting married!"></label><label>Style<select name="theme">'+THEMES.map(function(t){return'<option value="'+t[0]+'"'+((st.theme||'sage')===t[0]?' selected':'')+'>'+t[1]+'</option>'}).join('')+'</select></label><label>Reply on WhatsApp number, with country code<input name="rsvp" type="tel" value="'+esc(st.rsvp||'')+'" placeholder="e.g. 254700000000"></label><label>Please reply by<input name="rsvpBy" type="date" value="'+esc(st.rsvpBy||'')+'"></label><label>Dress code<input name="dress" value="'+esc(st.dress||'')+'" placeholder="e.g. Smart casual in sage and cream"></label><label class="full">Our story<textarea name="story">'+esc(st.story||'')+'</textarea></label>';
+ var cs=activeCers();
+ if(!cs.length)h+='<div class="full note">Choose your ceremonies in Settings to add their times and places.</div>';
+ cs.forEach(function(c){var e=(st.ev&&st.ev[c.id])||{};
+  h+='<div class="full"><h3>'+esc(c.name)+'</h3></div><label>Date<input name="ev_'+c.id+'_d" type="date" value="'+esc(e.d||S.date||'')+'"></label><label>Time<input name="ev_'+c.id+'_t" type="time" value="'+esc(e.t||'')+'"></label><label>Place<input name="ev_'+c.id+'_p" value="'+esc(e.p||'')+'"></label><label>Map link, from Google Maps<input name="ev_'+c.id+'_m" value="'+esc(e.m||'')+'" placeholder="https://"></label>'});
+ h+='<div class="full"><div class="checks"><label><input type="checkbox" name="contrib"'+(st.contrib?' checked':'')+'>Show my payment details for contributions (from the Committee tab)</label></div></div><div class="full"><button class="btn gold">Save and create my page</button></div></form>';
+ if(S.site){
+  var link=siteLink();
+  h+='<div class="card"><h3>Your page is ready</h3><p class="note">Share this link with your guests. If you change anything, save again and share the new link.</p><div class="site-prev">'+esc(link)+'</div>'+(link.length>1900?'<p class="note">Your link is quite long and some apps may cut it. Try a shorter story.</p>':'')+'<div class="row" style="margin-top:12px"><a class="btn" target="_blank" rel="noopener" href="'+esc(link)+'">Open preview</a><a class="btn wa" target="_blank" rel="noopener" href="'+esc(waShare(tf('Our wedding details are here: {0}',[link])))+'">Share on WhatsApp</a><button class="btn sec" data-act="copysite">Copy link</button></div></div>';
+ }
+ return h;
+}
+var VIEWS={site:vSite,shop:vShop,home:vHome,checklist:vChecklist,budget:vBudget,guests:vGuests,committee:vCommittee,vendors:vVendors,venues:vVenues,settings:vSettings};
 
 function render(keepScroll){
  var app=document.getElementById('app');if(!app)return;
@@ -402,6 +436,7 @@ document.addEventListener('click',function(e){
  else if(a==='addpay'){x=byId(S.members,id);var v=prompt(tf('Amount received from {0} ({1})',[x.name,S.cur]));if(v!==null){var n=num(v);if(n>0){x.paid=num(x.paid)+n;save();render(true);toast('Payment recorded')}}}
  else if(a==='copy'){copy(S.pay[el.getAttribute('data-key')]||'')}
  else if(a==='copysum'){copy(summaryText())}
+ else if(a==='copysite'){copy(siteLink())}
  else if(a==='ics'){makeICS()}
  else if(a==='vnext'){x=byId(S.vendors,id);x.status=cycle(STAT,x.status);save();render(true)}
  else if(a==='delv'){S.vendors=S.vendors.filter(function(t){return t.id!==id});save();render(true)}
@@ -433,6 +468,7 @@ document.addEventListener('submit',function(e){
  var f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();
  var k=f.getAttribute('data-form'),o=fd(f);
  if(k==='join'){joinSend(o);return}
+ if(k==='site'){var sev={};activeCers().forEach(function(c){sev[c.id]={d:o['ev_'+c.id+'_d']||'',t:o['ev_'+c.id+'_t']||'',p:(o['ev_'+c.id+'_p']||'').trim(),m:(o['ev_'+c.id+'_m']||'').trim()}});S.names=(o.names||'').trim();S.site={tagline:(o.tagline||'').trim(),story:(o.story||'').trim(),dress:(o.dress||'').trim(),rsvp:(o.rsvp||'').trim(),rsvpBy:o.rsvpBy||'',theme:o.theme||'sage',contrib:o.contrib!==undefined,ev:sev};toast('Saved');save();render(true);return}
  if(k==='task'){S.tasks.push({id:uid(),cer:o.cer,text:o.text.trim(),done:false});toast('Task added')}
  else if(k==='total'){S.total=o.total}
  else if(k==='budget'){S.budget.push({id:uid(),name:o.name.trim(),cat:o.cat,cer:o.cer,planned:o.planned,paid:o.paid,cur:o.cur});toast('Item added')}
