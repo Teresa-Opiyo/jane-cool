@@ -1,7 +1,9 @@
 (function(){
 'use strict';
 var KEY='bridevilla.v1';
+var CONTACT_EMAIL='tessaakumu@yahoo.com';
 var REGIONS={KE:{n:'Kenya',cur:'KES',cc:'254'},US:{n:'United States',cur:'USD',cc:'1'},EU:{n:'Europe',cur:'EUR',cc:''},OTHER:{n:'Other',cur:'USD',cc:''}};
+var CURS=[['KES','Kenyan shilling'],['USD','US dollar'],['EUR','Euro'],['GBP','British pound'],['UGX','Ugandan shilling'],['TZS','Tanzanian shilling'],['RWF','Rwandan franc'],['ETB','Ethiopian birr'],['NGN','Nigerian naira'],['GHS','Ghanaian cedi'],['ZAR','South African rand'],['ZMW','Zambian kwacha'],['XOF','West African CFA franc'],['MAD','Moroccan dirham'],['EGP','Egyptian pound'],['HUF','Hungarian forint'],['CHF','Swiss franc'],['SEK','Swedish krona'],['NOK','Norwegian krone'],['DKK','Danish krone'],['PLN','Polish zloty'],['CAD','Canadian dollar'],['AUD','Australian dollar'],['NZD','New Zealand dollar'],['INR','Indian rupee'],['AED','UAE dirham'],['SAR','Saudi riyal'],['JPY','Japanese yen'],['CNY','Chinese yuan'],['BRL','Brazilian real'],['MXN','Mexican peso']];
 var AREAS=['Nairobi','Kiambu','Naivasha','Nakuru','Nanyuki','Mombasa','Diani','Kisumu','Eldoret','Machakos','Other'];
 var CATS=['Venue','Catering','Attire','Decor and flowers','Photo and video','Music and MC','Transport','Cake','Rings','Invitations','Dowry or bride price','Honeymoon','Other'];
 var VCATS=['Venue','Caterer','Photographer','Videographer','Decor','Dress or suit','Makeup and hair','MC or DJ','Transport','Cake','Other'];
@@ -15,21 +17,79 @@ var SEED={
  Church:['Meet the pastor or priest and book the date','Complete any required classes or counselling','Choose the choir, ushers and readers','Plan the church decor and programme','Order the programme booklets'],
  Reception:['Choose and book the reception venue','Book catering and agree the menu','Book the MC, music and sound','Plan the seating and the programme','Order the cake','Arrange transport for the couple and guests']
 };
+var PARTNERS={disclosure:'',vendors:[],shop:[]},vtab='mine',pcat='',parea='';
 var S=null,tab='home',gFilter={q:'',side:'',rsvp:'',cer:''},editG=null,editM=null;
 
+
+/* languages */
+var LANGS=[['en','English','en-GB'],['sw','Kiswahili','sw-KE'],['fr','Français','fr-FR']];
+var FLAGS={
+ en:'<svg viewBox="0 0 60 30" width="30" height="15"><clipPath id="fs"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="ft"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#fs)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#ft)" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></g></svg>',
+ sw:'<svg viewBox="0 0 90 60" width="26" height="17"><rect width="90" height="18" fill="#000"/><rect y="18" width="90" height="3" fill="#fff"/><rect y="21" width="90" height="18" fill="#BB0000"/><rect y="39" width="90" height="3" fill="#fff"/><rect y="42" width="90" height="18" fill="#006600"/><path d="M30 12 60 48M60 12 30 48" stroke="#fff" stroke-width="2.5"/><ellipse cx="45" cy="30" rx="10" ry="16" fill="#BB0000"/><ellipse cx="45" cy="30" rx="10" ry="16" fill="none" stroke="#000" stroke-width="2"/><ellipse cx="45" cy="30" rx="3.5" ry="9" fill="#fff"/><ellipse cx="45" cy="30" rx="1.5" ry="5" fill="#000"/></svg>',
+ fr:'<svg viewBox="0 0 30 20" width="26" height="17"><rect width="10" height="20" fill="#0055A4"/><rect x="10" width="10" height="20" fill="#fff"/><rect x="20" width="10" height="20" fill="#EF4135"/></svg>'
+};
+function detectLang(){try{var l=(navigator.language||'en').toLowerCase();if(l.indexOf('sw')===0)return'sw';if(l.indexOf('fr')===0)return'fr'}catch(e){}return'en'}
+function curLang(){return(S&&S.lang)||'en'}
+var PCACHE={};
+function patterns(L){
+ if(PCACHE[L])return PCACHE[L];var d=(window.I18N||{})[L]||{},out=[];
+ Object.keys(d).forEach(function(k){if(k.indexOf('{')>-1){var n=0,src=k.replace(/[.*+?^$()|[\]\\]/g,'\\$&').replace(/\{(\d)\}/g,function(){n++;return'(.+?)'});out.push({re:new RegExp('^'+src+'$'),to:d[k],len:k.length})}});
+ out.sort(function(a,b){return b.len-a.len});PCACHE[L]=out;return out;
+}
+function tx(L,str){
+ var d=(window.I18N||{})[L];if(!d||!str)return str;
+ if(Object.prototype.hasOwnProperty.call(d,str))return d[str];
+ if(str.indexOf(' | ')>-1)return str.split(' | ').map(function(q){return tx(L,q)}).join(' | ');
+ var ps=patterns(L);
+ for(var i=0;i<ps.length;i++){var m=ps[i].re.exec(str);if(m)return ps[i].to.replace(/\{(\d)\}/g,function(_,n){return m[+n+1]!==undefined?m[+n+1]:''})}
+ if(str.indexOf(' | ')>-1)return str.split(' | ').map(function(q){return tx(L,q)}).join(' | ');
+ if(str.indexOf(', ')>-1&&str.length<120){var pr=str.split(', '),ch=false,po=pr.map(function(q){var r=tx(L,q);if(r!==q)ch=true;return r});if(ch)return po.join(', ')}
+ if(str.indexOf('\n')>-1&&str.length<400)return str.split('\n').map(function(q){return q.trim()?tx(L,q):q}).join('\n');
+ return str;
+}
+function tr(str){var L=curLang();return L==='en'?str:tx(L,String(str))}
+function tf(key,args){
+ var L=curLang(),d=(window.I18N||{})[L],t=(L!=='en'&&d&&Object.prototype.hasOwnProperty.call(d,key))?d[key]:key;
+ return t.replace(/\{(\d)\}/g,function(_,n){return args&&args[+n]!==undefined?args[+n]:''});
+}
+function translateDom(root){
+ var L=curLang(),w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null),n,nodes=[];
+ while((n=w.nextNode()))nodes.push(n);
+ nodes.forEach(function(t){
+  var p=t.parentNode&&t.parentNode.nodeName;if(p==='SCRIPT'||p==='STYLE'||(t.parentNode&&t.parentNode.id==='sum'))return;
+  if(t.__en===undefined)t.__en=t.nodeValue;
+  var m=/^(\s*)([\s\S]*?)(\s*)$/.exec(t.__en);
+  var out=L==='en'?t.__en:m[1]+tx(L,m[2])+m[3];
+  if(t.nodeValue!==out)t.nodeValue=out;
+ });
+ root.querySelectorAll('[placeholder],[aria-label],[title]').forEach(function(el){
+  ['placeholder','aria-label','title'].forEach(function(a){
+   if(!el.hasAttribute(a))return;el.__en=el.__en||{};if(el.__en[a]===undefined)el.__en[a]=el.getAttribute(a);
+   var o=L==='en'?el.__en[a]:tx(L,el.__en[a]);if(el.getAttribute(a)!==o)el.setAttribute(a,o);
+  });
+ });
+}
+function renderLangBar(){
+ var b=document.getElementById('langbar');if(!b)return;
+ b.innerHTML=LANGS.map(function(l){return'<button type="button" class="lg'+(curLang()===l[0]?' on':'')+'" data-lang="'+l[0]+'" aria-label="'+l[1]+'" title="'+l[1]+'">'+FLAGS[l[0]]+'<span>'+l[0].toUpperCase()+'</span></button>'}).join('');
+ document.documentElement.lang=curLang();
+}
+function dateLocale(){var l=LANGS.filter(function(x){return x[0]===curLang()})[0];return l?l[2]:'en-GB'}
+var DEFAULT_TPL='Dear {guest}, {names} warmly invite you to our wedding ({ceremony}). Date: {date}. Please let us know if you can join us. With love.';
+function isDefaultTpl(x){var I=window.I18N||{};return x===DEFAULT_TPL||(I.sw&&x===I.sw[DEFAULT_TPL])||(I.fr&&x===I.fr[DEFAULT_TPL])}
 function uid(){return Math.random().toString(36).slice(2,9)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function num(v){var n=parseFloat(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:0}
 function def(){
- var cers=['Civil','Traditional','Church','Reception'].map(function(n){return{id:n.toLowerCase(),name:n,on:true}});
+ var cers=['Civil','Traditional','Church','Reception'].map(function(n){return{id:n.toLowerCase(),name:n,on:false}});
  var tasks=[];Object.keys(SEED).forEach(function(k){SEED[k].forEach(function(t){tasks.push({id:uid(),cer:k==='General'?'general':k.toLowerCase(),text:t,done:false})})});
- return{region:'KE',cur:'KES',cur2:'USD',rate:'',names:'',date:'',inviteTpl:'Dear {guest}, {names} warmly invite you to our wedding ({ceremony}) on {date}. Please let us know if you can join us. With love.',
+ return{region:'KE',cur:'KES',cur2:'USD',rate:'',names:'',date:'',inviteTpl:DEFAULT_TPL,lang:detectLang(),
   ceremonies:cers,tasks:tasks,total:'',budget:[],guests:[],members:[],pay:{mpesa:'',paybill:'',account:'',till:'',other:''},priv:{names:true,amounts:true,pay:true},
-  meet:{title:'Wedding committee meeting',date:'',time:'',place:'',link:''},vendors:[],venues:[],event:'wedding'}
+  meet:{title:'Wedding committee meeting',date:'',time:'',place:'',link:''},vendors:[],venues:[],event:'wedding',setup:false,guestTarget:0}
 }
 function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r),d=def();Object.keys(d).forEach(function(k){if(o[k]===undefined)o[k]=d[k]});return o}}catch(e){}return def()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device')}}
-function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(function(){t.classList.remove('on')},2200)}
+function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=tr(m);t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(function(){t.classList.remove('on')},2200)}
 
 function fmt(n,cur){var v=Math.round(n*100)/100;return (cur||S.cur)+' '+v.toLocaleString('en-US',{maximumFractionDigits:2})}
 function cc(){return(REGIONS[S.region]||REGIONS.OTHER).cc}
@@ -46,8 +106,8 @@ function normPhone(p){
 function waLink(p,msg){var n=normPhone(p);return'https://wa.me/'+(n?n:'')+'?text='+encodeURIComponent(msg)}
 function waShare(msg){return'https://wa.me/?text='+encodeURIComponent(msg)}
 function mailLink(e,sub,msg){return'mailto:'+encodeURIComponent(e||'')+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(msg)}
-function niceDate(d){if(!d)return'a date to be confirmed';var x=new Date(d+'T00:00:00');return isNaN(x)?d:x.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
-function names(){return S.names||'the couple'}
+function niceDate(d){if(!d)return tr('a date to be confirmed');var x=new Date(d+'T00:00:00');return isNaN(x)?d:x.toLocaleDateString(dateLocale(),{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+function names(){return S.names||tr('the couple')}
 function cerName(id){if(id==='general')return'General';var c=S.ceremonies.filter(function(x){return x.id===id})[0];return c?c.name:id}
 function activeCers(){return S.ceremonies.filter(function(c){return c.on})}
 function toMain(amount,curKey){
@@ -56,8 +116,9 @@ function toMain(amount,curKey){
 }
 function curOf(k){return k==='second'?S.cur2:S.cur}
 function inviteMsg(g){
- var cl=(g.cers&&g.cers.length?g.cers.map(cerName).join(', '):'wedding');
- return S.inviteTpl.replace(/\{guest\}/g,g.name).replace(/\{names\}/g,names()).replace(/\{date\}/g,niceDate(S.date)).replace(/\{ceremony\}/g,cl);
+ var cl=(g.cers&&g.cers.length?g.cers.map(function(id){return tr(cerName(id))}).join(', '):tr('wedding'));
+ var tpl=isDefaultTpl(S.inviteTpl)?tr(DEFAULT_TPL):S.inviteTpl;
+ return tpl.replace(/\{guest\}/g,g.name).replace(/\{names\}/g,names()).replace(/\{date\}/g,niceDate(S.date)).replace(/\{ceremony\}/g,cl);
 }
 
 /* totals */
@@ -79,17 +140,18 @@ function vHome(){
  var dl=daysLeft(),h='';
  var sub=S.names?esc(S.names):'Add your names in Settings';
  var big=dl===null?'Set your date':(dl>0?dl+' days to go':(dl===0?'Today is the day':Math.abs(dl)+' days since the wedding'));
- h+='<div class="card hero"><h2>'+sub+'</h2><div style="font-size:26px;font-weight:700">'+esc(big)+'</div><div>'+esc(S.date?niceDate(S.date):'Choose a date when you are ready')+'</div></div>';
- h+='<div class="card"><h3>Event type</h3><div class="row"><button class="chip on">Wedding</button><span class="chip soon">Birthday: coming soon</span><span class="chip soon">Graduation: coming soon</span><span class="chip soon">Baby shower: coming soon</span></div></div>';
- var done=S.tasks.filter(function(t){return t.done}).length,tot=S.tasks.length,bt=budgetTotals(),pt=pledgeTotals();
+ h+='<div class="card hero"><div class="eyebrow">Bride <span class="v">V</span>illa</div><h2>'+sub+'</h2><div style="font-size:26px;font-weight:700">'+esc(big)+'</div><div>'+esc(S.date?niceDate(S.date):'Choose a date when you are ready')+'</div></div>';
+ h+='<div class="card"><h3>Event type</h3><div class="row"><button class="chip on">Bride Villa (weddings)</button><span class="chip soon">Birthday Villa: coming soon</span><span class="chip soon">Graduation Villa: coming soon</span><span class="chip soon">Baby Shower Villa: coming soon</span></div></div>';
+ var vis=visibleTasks(),done=vis.filter(function(t){return t.done}).length,tot=vis.length,bt=budgetTotals(),pt=pledgeTotals();
  var yes=S.guests.filter(function(g){return g.rsvp==='yes'}).length;
  var heads=S.guests.reduce(function(a,g){return a+(g.rsvp==='yes'?1+num(g.plus):0)},0);
- h+='<div class="grid"><div class="stat"><b>'+done+'/'+tot+'</b><span>Tasks done</span></div><div class="stat"><b>'+S.guests.length+'</b><span>Guests ('+yes+' confirmed, '+heads+' people)</span></div><div class="stat"><b>'+esc(fmt(bt.planned))+'</b><span>Planned spend</span></div><div class="stat"><b>'+esc(fmt(pt.paid))+'</b><span>Pledges received of '+esc(fmt(pt.pledged))+'</span></div></div>';
+ h+='<div class="grid"><div class="stat"><b>'+done+'/'+tot+'</b><span>Tasks done</span></div><div class="stat"><b>'+S.guests.length+'</b><span>'+(S.guestTarget?'Guests, target '+S.guestTarget+' ('+yes+' confirmed)':'Guests ('+yes+' confirmed, '+heads+' people)')+'</span></div><div class="stat"><b>'+esc(fmt(bt.planned))+'</b><span>Planned spend</span></div><div class="stat"><b>'+esc(fmt(pt.paid))+'</b><span>Pledges received of '+esc(fmt(pt.pledged))+'</span></div></div>';
  h+='<div class="card"><h3>Progress by ceremony</h3>';
+ if(!activeCers().length)h+='<div class="row between"><span class="note">No ceremonies chosen yet.</span><button class="btn sec sm" data-act="wzopen">Tailor my plan</button></div>';
  activeCers().forEach(function(c){var ts=S.tasks.filter(function(t){return t.cer===c.id}),d=ts.filter(function(t){return t.done}).length,p=ts.length?d/ts.length*100:0;
   h+='<div class="cer"><div class="row between"><b>'+esc(c.name)+'</b><span class="note">'+d+' of '+ts.length+'</span></div>'+bar(p)+'</div>'});
  h+='</div>';
- h+='<div class="card"><h3>Install Bride Villa</h3><p class="note">On Android Chrome: open the menu and tap Install app or Add to Home screen. On iPhone Safari: tap Share, then Add to Home Screen. Your plan is saved only on this device, so use Settings to export a backup now and then.</p></div>';
+ h+='<div class="card"><h3>Install Jane Cool</h3><p class="note">On Android Chrome: open the menu and tap Install app or Add to Home screen. On iPhone Safari: tap Share, then Add to Home Screen. Your plan is saved only on this device, so use Settings to export a backup now and then.</p></div>';
  return h;
 }
 function vChecklist(){
@@ -144,15 +206,15 @@ function vGuests(){
 function copyField(label,val,key){return'<div class="copyrow"><label>'+esc(label)+'<input data-pay="'+key+'" value="'+esc(val)+'"></label><button class="btn sec sm" data-act="copy" data-key="'+key+'">Copy</button></div>'}
 function summaryText(){
  var pt=pledgeTotals(),L=[];
- L.push('*'+names()+' wedding committee update*');
- if(S.date)L.push('Date: '+niceDate(S.date));
- if(S.priv.amounts)L.push('Pledged: '+fmt(pt.pledged)+' | Received: '+fmt(pt.paid)+' | Still to come: '+fmt(Math.max(0,pt.pledged-pt.paid)));
- if(S.priv.names&&S.members.length){L.push('');L.push('Contributors:');S.members.forEach(function(m){L.push('- '+m.name+(S.priv.amounts?': pledged '+fmt(num(m.pledged))+', paid '+fmt(num(m.paid)):''))})}
- if(S.priv.pay){var p=S.pay,P=[];if(p.mpesa)P.push('M-Pesa send money: '+p.mpesa);if(p.paybill)P.push('Paybill: '+p.paybill+(p.account?' Account: '+p.account:''));if(p.till)P.push('Buy Goods Till: '+p.till);if(p.other)P.push(p.other);if(P.length){L.push('');L.push('How to contribute:');P.forEach(function(x){L.push(x)})}}
- L.push('');L.push('Thank you for walking with us.');
+ L.push('*'+tf('{0} wedding committee update',[names()])+'*');
+ if(S.date)L.push(tf('Date: {0}',[niceDate(S.date)]));
+ if(S.priv.amounts)L.push(tf('Pledged: {0} | Received: {1} | Still to come: {2}',[fmt(pt.pledged),fmt(pt.paid),fmt(Math.max(0,pt.pledged-pt.paid))]));
+ if(S.priv.names&&S.members.length){L.push('');L.push(tf('Contributors:'));S.members.forEach(function(m){L.push(S.priv.amounts?tf('- {0}: pledged {1}, paid {2}',[m.name,fmt(num(m.pledged)),fmt(num(m.paid))]):'- '+m.name)})}
+ if(S.priv.pay){var p=S.pay,P=[];if(p.mpesa)P.push(tf('M-Pesa send money: {0}',[p.mpesa]));if(p.paybill)P.push(p.account?tf('Paybill: {0}, Account: {1}',[p.paybill,p.account]):tf('Paybill: {0}',[p.paybill]));if(p.till)P.push(tf('Buy Goods Till: {0}',[p.till]));if(p.other)P.push(p.other);if(P.length){L.push('');L.push(tf('How to contribute:'));P.forEach(function(x){L.push(x)})}}
+ L.push('');L.push(tf('Thank you for walking with us.'));
  return L.join('\n');
 }
-function meetMsg(){var m=S.meet;return m.title+'\nDate: '+(m.date?niceDate(m.date):'to be confirmed')+(m.time?'\nTime: '+m.time:'')+(m.place?'\nPlace: '+m.place:'')+(m.link?'\nLink: '+m.link:'')+'\nPlease reply to confirm.'}
+function meetMsg(){var m=S.meet;return m.title+'\n'+tf('Date: {0}',[m.date?niceDate(m.date):tr('to be confirmed')])+(m.time?'\n'+tf('Time: {0}',[m.time]):'')+(m.place?'\n'+tf('Place: {0}',[m.place]):'')+(m.link?'\n'+tf('Link: {0}',[m.link]):'')+'\n'+tf('Please reply to confirm.')}
 function vCommittee(){
  var pt=pledgeTotals(),h='<h2>Committee and pledges</h2><p class="lead">Record who pledged and what has come in. Bride Villa never holds or moves money. People pay you or your treasurer directly, for example by M-Pesa.</p>';
  h+='<div class="grid"><div class="stat"><b>'+esc(fmt(pt.pledged))+'</b><span>Pledged</span></div><div class="stat"><b>'+esc(fmt(pt.paid))+'</b><span>Received</span></div><div class="stat"><b>'+esc(fmt(Math.max(0,pt.pledged-pt.paid)))+'</b><span>Still to come</span></div></div>';
@@ -161,7 +223,7 @@ function vCommittee(){
  h+='<div class="card"><div class="row between"><h3>People</h3><button class="btn sec sm" data-act="csvp">Download pledges (Excel)</button></div>';
  if(!S.members.length)h+='<div class="empty">No one added yet.</div>';
  S.members.forEach(function(m){var left=Math.max(0,num(m.pledged)-num(m.paid));
-  var rem='Hello '+m.name+', a gentle reminder about your kind pledge towards the '+names()+' wedding'+(left?' (balance '+fmt(left)+')':'')+'. Thank you so much for your support.';
+  var rem=left?tf('Hello {0}, a gentle reminder about your kind pledge towards the {1} wedding (balance {2}). Thank you so much for your support.',[m.name,names(),fmt(left)]):tf('Hello {0}, a gentle reminder about your kind pledge towards the {1} wedding. Thank you so much for your support.',[m.name,names()]);
   h+='<div class="item"><div class="grow"><div class="name">'+esc(m.name)+' <span class="pill">'+esc(m.role||'Contributor')+'</span></div><div class="meta">Pledged '+esc(fmt(num(m.pledged)))+' | Paid '+esc(fmt(num(m.paid)))+' | Balance '+esc(fmt(left))+'</div>'+bar(num(m.pledged)?num(m.paid)/num(m.pledged)*100:0)+'<div class="row"><button class="btn gold sm" data-act="addpay" data-id="'+m.id+'">+ Payment</button>'+(m.phone&&left?'<a class="btn wa sm" target="_blank" rel="noopener" href="'+esc(waLink(m.phone,rem))+'">Gentle reminder</a>':'')+'<button class="btn sec sm" data-act="editm" data-id="'+m.id+'">Edit</button><button class="btn del sm" data-act="delm" data-id="'+m.id+'">Delete</button></div></div></div>'});
  h+='</div>';
  h+='<div class="card"><h3>Payment details to share</h3><p class="note">Add only what you want to share. Copy a detail or include it in the summary below.</p>'+copyField('M-Pesa phone number',S.pay.mpesa,'mpesa')+copyField('Paybill number',S.pay.paybill,'paybill')+copyField('Account name or number',S.pay.account,'account')+copyField('Buy Goods Till number',S.pay.till,'till')+copyField('Other (bank, PayPal, Zelle)',S.pay.other,'other')+'</div>';
@@ -171,7 +233,9 @@ function vCommittee(){
  return h;
 }
 function vVendors(){
- var h='<h2>Vendors</h2><p class="lead">Keep every quote and payment in one place.</p>';
+ var h='<h2>Vendors</h2><p class="lead">Use the Jane Cool partner list, or keep your own vendors, quotes and payments in one place.</p>'+subTabs(vtab,[['mine','My vendors'],['jane','Jane Cool partner list'],['join','Are you a vendor?']]);
+ if(vtab==='jane')return h+partnerList();
+ if(vtab==='join')return h+vendorJoin();
  h+='<form class="card f" data-form="vendor"><label>Name<input name="name" required></label><label>Type<select name="cat">'+VCATS.map(function(c){return'<option>'+esc(c)+'</option>'}).join('')+'</select></label><label>Phone<input name="phone" type="tel"></label><label>Status<select name="status">'+STAT.map(function(c){return'<option>'+c+'</option>'}).join('')+'</select></label><label>Quote ('+esc(S.cur)+')<input name="quote" inputmode="decimal"></label><label>Paid<input name="paid" inputmode="decimal"></label><label class="full">Notes<input name="notes"></label><div><button class="btn">Add vendor</button></div></form>';
  h+='<div class="card">';if(!S.vendors.length)h+='<div class="empty">No vendors yet.</div>';
  S.vendors.forEach(function(v){h+='<div class="item"><div class="grow"><div class="name">'+esc(v.name)+' <span class="pill">'+esc(v.status)+'</span></div><div class="meta">'+esc(v.cat)+' | Quote '+esc(fmt(num(v.quote)))+' | Paid '+esc(fmt(num(v.paid)))+(v.notes?' | '+esc(v.notes):'')+'</div><div class="row" style="margin-top:6px">'+(v.phone?'<a class="btn wa sm" target="_blank" rel="noopener" href="'+esc(waLink(v.phone,'Hello '+v.name+', I am planning a wedding and would like to ask about your services.'))+'">WhatsApp</a>':'')+'<button class="btn sec sm" data-act="vnext" data-id="'+v.id+'">Next status</button><button class="btn del sm" data-act="delv" data-id="'+v.id+'">Delete</button></div></div></div>'});
@@ -186,18 +250,110 @@ function vVenues(){
  return h+'</div>';
 }
 function vSettings(){
- var h='<h2>Settings</h2>';
- h+='<form class="card f" data-form="settings"><label>Your names<input name="names" value="'+esc(S.names)+'" placeholder="Teresa and Peter"></label><label>Wedding date<input name="date" type="date" value="'+esc(S.date)+'"></label><label>Region<select name="region">'+Object.keys(REGIONS).map(function(k){return'<option value="'+k+'"'+(S.region===k?' selected':'')+'>'+REGIONS[k].n+'</option>'}).join('')+'</select></label><label>Main currency code<input name="cur" value="'+esc(S.cur)+'" maxlength="4"></label><label>Second currency code<input name="cur2" value="'+esc(S.cur2)+'" maxlength="4"></label><label>1 '+esc(S.cur2)+' equals how many '+esc(S.cur)+'?<input name="rate" inputmode="decimal" value="'+esc(S.rate)+'" placeholder="Enter today\'s rate yourself"></label><div class="full"><label>Ceremonies you are having</label><div class="checks">'+S.ceremonies.map(function(c){return'<label><input type="checkbox" name="cer_'+c.id+'"'+(c.on?' checked':'')+'>'+esc(c.name)+'</label>'}).join('')+'</div></div><label class="full">Invitation message. Use {guest}, {names}, {date}, {ceremony}<textarea name="inviteTpl">'+esc(S.inviteTpl)+'</textarea></label><div class="full"><button class="btn">Save settings</button></div></form>';
+ var h='<h2>Settings</h2><div class="card row between"><span>Want to answer the quick questions again?</span><button class="btn sec" data-act="wzopen">Tailor my plan</button></div>';
+ h+='<form class="card f" data-form="settings"><label>Your names<input name="names" value="'+esc(S.names)+'" placeholder="e.g. Amina and David"></label><label>Wedding date<input name="date" type="date" value="'+esc(S.date)+'"></label><label>Region<select name="region">'+Object.keys(REGIONS).map(function(k){return'<option value="'+k+'"'+(S.region===k?' selected':'')+'>'+REGIONS[k].n+'</option>'}).join('')+'</select></label><label>Main currency'+curSelect('cur',S.cur)+'</label><label>Second currency'+curSelect('cur2',S.cur2)+'</label><label>1 '+esc(S.cur2)+' equals how many '+esc(S.cur)+'?<input name="rate" inputmode="decimal" value="'+esc(S.rate)+'" placeholder="Enter today\'s rate yourself"></label><div class="full"><label>Type of wedding and extras. Choose only what you are planning</label><div class="checks">'+S.ceremonies.map(function(c){return'<label><input type="checkbox" name="cer_'+c.id+'"'+(c.on?' checked':'')+'>'+esc(c.name)+'</label>'}).join('')+'</div></div><label class="full">Invitation message. Use {guest}, {names}, {date}, {ceremony}<textarea name="inviteTpl">'+esc(S.inviteTpl)+'</textarea></label><div class="full"><button class="btn">Save settings</button></div></form>';
  h+='<div class="card"><h3>Your data</h3><p class="note">Everything is stored only in this browser on this device. Export a backup to keep it safe or to move to another device.</p><div class="row"><button class="btn" data-act="export">Export backup</button><label class="btn sec" style="margin:0;cursor:pointer">Import backup<input type="file" accept="application/json,.json" data-import style="display:none"></label><button class="btn sec" data-act="print">Print progress report</button><button class="btn del" data-act="reset">Erase everything</button></div></div>';
  return h;
 }
-var VIEWS={home:vHome,checklist:vChecklist,budget:vBudget,guests:vGuests,committee:vCommittee,vendors:vVendors,venues:vVenues,settings:vSettings};
+
+function visibleTasks(){var on={general:1};activeCers().forEach(function(c){on[c.id]=1});return S.tasks.filter(function(t){return on[t.cer]})}
+function pwaLink(num,msg){var d=String(num||'').replace(/\D/g,'');return'https://wa.me/'+d+'?text='+encodeURIComponent(msg)}
+function curSelect(name,val){
+ var list=CURS.slice();if(val&&!list.some(function(c){return c[0]===val}))list.unshift([val,'Your currency']);
+ return'<select name="'+name+'">'+list.map(function(c){return'<option value="'+esc(c[0])+'"'+(c[0]===val?' selected':'')+'>'+esc(c[0])+', '+esc(c[1])+'</option>'}).join('')+'</select>';
+}
+function safeUrl(u){u=String(u||'').trim();return/^https?:\/\//i.test(u)?u:''}
+function subTabs(cur,items){return'<div class="row" style="margin-bottom:12px">'+items.map(function(i){return'<button class="chip'+(cur===i[0]?' on':'')+'" data-act="vtab" data-v="'+i[0]+'">'+esc(i[1])+'</button>'}).join('')+'</div>'}
+function safeImg(u){u=String(u||'').trim();return(/^https:\/\//i.test(u)||/^photos\/[\w.\-\/]+$/i.test(u))?u:''}
+function moneyTxt(n,cur){return(cur||'')+' '+Number(n).toLocaleString('en-US')}
+function priceHtml(v){
+ var h='',cur=v.currency||'';
+ var a=num(v.priceFrom),b=num(v.priceTo);
+ if(a&&b)h+='<div class="price">Typically '+esc(moneyTxt(a,cur))+' to '+esc(moneyTxt(b,cur))+'</div>';
+ else if(a)h+='<div class="price">From '+esc(moneyTxt(a,cur))+'</div>';
+ if(v.priceNote)h+='<div class="pk">'+esc(v.priceNote)+'</div>';
+ (Array.isArray(v.packages)?v.packages:[]).forEach(function(p){if(p&&p.name)h+='<div class="pk"><b>'+esc(p.name)+'</b>'+(p.guests?' for up to '+esc(p.guests)+' guests':'')+(p.from?': from '+esc(moneyTxt(num(p.from),p.currency||cur)):'')+'</div>'});
+ if(h&&v.confirmed)h+='<div class="note">Prices last confirmed '+esc(v.confirmed)+'</div>';
+ return h;
+}
+function partnerList(){
+ if(S.region!=='KE')return'<div class="card"><h3>Jane Cool partner list</h3><p class="note">Our partner list currently covers Kenya only. Other countries are coming soon. In the meantime, add your own vendors under My vendors, or change your region to Kenya in Settings to see it.</p></div>';
+ var L=(PARTNERS.vendors||[]).filter(function(v){return!v.country||String(v.country).toLowerCase()==='kenya'}),h='<div class="card"><h3>Jane Cool partner list</h3><p class="note">These vendors are chosen and listed by Jane Cool. Prices are ranges shared by the vendors and can change, so always confirm with the vendor. You are free to use them, or find your own under My vendors.'+(PARTNERS.disclosure?' '+esc(PARTNERS.disclosure):'')+'</p></div>';
+ if(!L.length)return h+'<div class="card empty">The Jane Cool partner list is coming soon. In the meantime, add your own vendors under My vendors.</div>';
+ var cats=[],areas=[];L.forEach(function(v){var c=v.category||'Other';if(cats.indexOf(c)<0)cats.push(c);if(v.area&&areas.indexOf(v.area)<0)areas.push(v.area)});
+ h+='<div class="card"><div class="row"><label style="flex:1;min-width:160px">Type<select data-pcat><option value="">All types</option>'+cats.map(function(c){return'<option'+(pcat===c?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select></label><label style="flex:1;min-width:160px">Area<select data-parea><option value="">All areas</option>'+areas.map(function(c){return'<option'+(parea===c?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select></label></div></div><div class="card">';
+ var shown=0;
+ L.forEach(function(v,i){
+  if(pcat&&(v.category||'Other')!==pcat)return;if(parea&&v.area!==parea)return;shown++;
+  var w=safeUrl(v.website),ig=String(v.instagram||'').replace(/^@/,'').replace(/[^\w.]/g,''),ph=(Array.isArray(v.photos)?v.photos:[]).map(safeImg).filter(Boolean).slice(0,3);
+  h+='<div class="item"><div class="grow"><div class="name">'+esc(v.name)+' <span class="pill">Jane Cool partner</span></div><div class="meta">'+esc(v.category||'')+(v.area?' | '+esc(v.area):'')+(v.country?' | '+esc(v.country):'')+'</div>'+priceHtml(v)+(v.note?'<div class="meta">'+esc(v.note)+'</div>':'')+(ph.length?'<div class="ph">'+ph.map(function(u){return'<img loading="lazy" src="'+esc(u)+'" alt="'+esc(v.name)+'">'}).join('')+'</div>':'')+'<div class="row" style="margin-top:8px">'+(v.whatsapp?'<a class="btn wa sm" target="_blank" rel="noopener" href="'+esc(pwaLink(v.whatsapp,'Hello '+v.name+', I found you on Jane Cool and would like to ask about your services for my wedding.'))+'">WhatsApp</a>':'')+(ig?'<a class="btn sec sm" target="_blank" rel="noopener" href="https://instagram.com/'+esc(ig)+'">Instagram</a>':'')+(w?'<a class="btn sec sm" target="_blank" rel="noopener sponsored" href="'+esc(w)+'">Website</a>':'')+'<button class="btn sec sm" data-act="savep" data-i="'+i+'">Save to My vendors</button></div></div></div>';
+ });
+ if(!shown)h+='<div class="empty">No vendors match this filter.</div>';
+ return h+'</div>';
+}
+function vendorJoin(){
+ return'<div class="card"><h3>Join the Jane Cool partner list</h3><p class="note">Are you a florist, decorator, caterer, photographer, venue or another wedding professional? Tell us about your business. Your details open in an email to the Jane Cool team, and nothing is published until we agree on it together. There is no payment to apply.</p></div>'+
+ '<form class="card f" data-form="join"><label>Business name<input name="biz" required></label><label>Type of business<select name="cat">'+VCATS.map(function(c){return'<option>'+esc(c)+'</option>'}).join('')+'</select></label><label>Your name<input name="who" required></label><label>Area and country<input name="area" placeholder="e.g. Nairobi, Kenya"></label><label>WhatsApp number with country code<input name="phone" type="tel" placeholder="e.g. 254700000000"></label><label>Instagram handle<input name="ig" placeholder="@yourbusiness"></label><label>Website, if any<input name="web"></label><label>Currency<input name="cur" value="KES" maxlength="4"></label><label>Prices start from<input name="from" inputmode="decimal"></label><label>Prices go up to<input name="to" inputmode="decimal"></label><label class="full">Packages, for example a full setup for 100 guests and the starting price<textarea name="pk"></textarea></label><label class="full">Anything else you would like us to know<textarea name="msg"></textarea></label><div class="full note">After you send the email, please attach 2 or 3 photos of your work that you own the rights to, and say that you give us permission to share them.</div><div class="full"><button class="btn gold">Open email to apply</button></div></form>';
+}
+function joinSend(o){
+ var L=['Partner application for Jane Cool','','Business: '+o.biz,'Type: '+o.cat,'Contact: '+o.who,'Area: '+(o.area||''),'WhatsApp: '+(o.phone||''),'Instagram: '+(o.ig||''),'Website: '+(o.web||''),'Price range: '+(o.cur||'')+' '+(o.from||'?')+' to '+(o.to||'?'),'','Packages:',o.pk||'','','Notes:',o.msg||'','','I will attach photos I own the rights to and give Jane Cool permission to share them.'];
+ var url=mailLink(CONTACT_EMAIL,'Partner application: '+o.biz,L.join('\n'));
+ window.__bv.lastMail=url;window.location.href=url;toast('Opening your email app');
+}
+function vShop(){
+ var L=PARTNERS.shop||[],h='<h2>DIY and shop</h2><p class="lead">Ideas and supplies for planning your wedding your way.</p>';
+ if(!L.length)return h+'<div class="card empty">The Jane Cool shop is coming soon.</div>';
+ h+='<div class="shopgrid">';
+ L.forEach(function(p){var u=safeUrl(p.url);
+  h+='<div class="card"><div class="src">'+esc(p.source||'Jane Cool shop')+'</div><h3>'+esc(p.title)+'</h3><div class="note">'+esc(p.description||'')+'</div>'+(p.price?'<b>'+esc(p.price)+'</b>':'')+(u?'<div><a class="btn coral sm" target="_blank" rel="noopener sponsored" href="'+esc(u)+'">View</a></div>':'')+'</div>';
+ });
+ h+='</div>';
+ if(PARTNERS.disclosure)h+='<p class="note" style="margin-top:12px">'+esc(PARTNERS.disclosure)+'</p>';
+ return h;
+}
+var W=null;
+function wizInit(){
+ W={step:0,cers:{},reception:false,guests:0,names:S.names,date:S.date,region:S.region,cur:S.cur,total:S.total};
+ S.ceremonies.forEach(function(c){if(c.id!=='reception')W.cers[c.id]=c.on});
+ var r=S.ceremonies.filter(function(c){return c.id==='reception'})[0];W.reception=!!(r&&r.on);W.guests=S.guestTarget||0;
+}
+function bub(label,act,k,v,on,off){return'<button type="button" class="chip big'+(on?' on':'')+(off?' soon':'')+'"'+(off?' disabled':' data-act="'+act+'" data-k="'+k+'" data-v="'+esc(v)+'"')+'>'+esc(label)+'</button>'}
+function vWizard(){
+ if(!W)wizInit();
+ var N=6,st=W.step,h='<div class="card hero"><div class="eyebrow">Welcome to Jane Cool</div><h2>A few quick questions</h2><p style="margin:4px 0 0">They help us tailor your plan. You can change every answer later.</p></div>';
+ h+='<div class="card"><div class="row between"><span class="note">Question '+(st+1)+' of '+N+'</span><button class="btn sec sm" data-act="wzskip">Skip, I will explore on my own</button></div>'+bar((st+1)/N*100);
+ if(st===0){
+  h+='<h3>What are you planning?</h3><div class="row">'+bub('Bride Villa: a wedding','wzpick','event','wedding',true)+bub('Birthday Villa: coming soon','','','',false,true)+bub('Graduation Villa: coming soon','','','',false,true)+bub('Baby Shower Villa: coming soon','','','',false,true)+'</div>';
+ }else if(st===1){
+  h+='<h3>What kind of wedding are you planning?</h3><p class="note">Choose one or more. Not sure? Pick your best guess.</p><div class="row">'+S.ceremonies.filter(function(c){return c.id!=='reception'}).map(function(c){return bub(c.name+' wedding','wztoggle','cer',c.id,!!W.cers[c.id])}).join('')+'</div>';
+ }else if(st===2){
+  h+='<h3>Will you also have a reception or party?</h3><div class="row">'+bub('Yes, a reception','wzpick','reception','1',W.reception)+bub('No, not for now','wzpick','reception','0',!W.reception)+'</div>';
+ }else if(st===3){
+  h+='<h3>Roughly how many guests?</h3><p class="note">A guess is fine. It only helps us track your guest list.</p><div class="row">'+[['Up to 50',50],['50 to 100',100],['100 to 200',200],['200 to 400',400],['400 or more',600],['Not sure yet',0]].map(function(g){return bub(g[0],'wzpick','guests',String(g[1]),W.guests===g[1])}).join('')+'</div>';
+ }else if(st===4){
+  h+='<h3>Where are you planning, and which currency?</h3><form class="f" onsubmit="return false"><label>Country or region<select data-wzf="region">'+Object.keys(REGIONS).map(function(k){return'<option value="'+k+'"'+(W.region===k?' selected':'')+'>'+REGIONS[k].n+'</option>'}).join('')+'</select></label><label>Currency'+curSelect('cur',W.cur).replace('<select name="cur">','<select name="cur" data-wzf="cur">')+'</label></form>';
+ }else{
+  h+='<h3>Last bit, all optional</h3><form class="f" onsubmit="return false"><label>Your names<input id="wz_names" value="'+esc(W.names)+'" placeholder="e.g. Amina and David"></label><label>Wedding date<input id="wz_date" type="date" value="'+esc(W.date)+'"></label><label>Total budget in '+esc(W.cur)+'<input id="wz_total" inputmode="decimal" value="'+esc(W.total)+'" placeholder="You can add this later"></label></form>';
+ }
+ h+='<div class="row" style="margin-top:16px">'+(st>0?'<button class="btn sec" data-act="wzback">Back</button>':'')+(st<N-1?'<button class="btn gold" data-act="wznext">Next</button>':'<button class="btn gold" data-act="wzfinish">Start planning</button>')+'</div></div>';
+ return h;
+}
+function loadPartners(){
+ if(location.protocol==='file:'||!window.fetch)return;
+ fetch('partners.json',{cache:'no-cache'}).then(function(r){return r.ok?r.json():null}).then(function(j){
+  if(j&&typeof j==='object'){PARTNERS={disclosure:String(j.disclosure||''),vendors:Array.isArray(j.vendors)?j.vendors:[],shop:Array.isArray(j.shop)?j.shop:[]};if(tab==='vendors'||tab==='shop')render(true)}
+ }).catch(function(){});
+}
+var VIEWS={shop:vShop,home:vHome,checklist:vChecklist,budget:vBudget,guests:vGuests,committee:vCommittee,vendors:vVendors,venues:vVenues,settings:vSettings};
 
 function render(keepScroll){
  var app=document.getElementById('app');if(!app)return;
  var y=window.scrollY;
- app.innerHTML=VIEWS[tab]();
+ var setup=!S.setup||!!W;
+ document.body.classList.toggle('setup',setup);
+ app.innerHTML=setup?vWizard():VIEWS[tab]();
  document.querySelectorAll('nav [data-tab]').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-tab')===tab)});
+ translateDom(document.body);renderLangBar();
  if(keepScroll)window.scrollTo(0,y);
 }
 function setTab(t){tab=t;editG=null;editM=null;render();window.scrollTo(0,0)}
@@ -229,6 +385,7 @@ function byId(arr,id){return arr.filter(function(x){return x.id===id})[0]}
 function cycle(list,v){var i=list.indexOf(v);return list[(i+1)%list.length]}
 
 document.addEventListener('click',function(e){
+ var lb=e.target.closest('[data-lang]');if(lb){S.lang=lb.getAttribute('data-lang');save();render(true);return}
  var tb=e.target.closest('[data-tab]');if(tb){setTab(tb.getAttribute('data-tab'));return}
  var el=e.target.closest('[data-act]');if(!el)return;
  var a=el.getAttribute('data-act'),id=el.getAttribute('data-id'),x;
@@ -238,11 +395,11 @@ document.addEventListener('click',function(e){
  else if(a==='rsvp'){x=byId(S.guests,id);x.rsvp=cycle(['pending','yes','no'],x.rsvp||'pending');save();render(true)}
  else if(a==='editg'){editG=id;render();window.scrollTo(0,0)}
  else if(a==='cancelg'){editG=null;render()}
- else if(a==='delg'){if(confirm('Delete this guest?')){S.guests=S.guests.filter(function(t){return t.id!==id});save();render(true)}}
+ else if(a==='delg'){if(confirm(tr('Delete this guest?'))){S.guests=S.guests.filter(function(t){return t.id!==id});save();render(true)}}
  else if(a==='editm'){editM=id;render();window.scrollTo(0,0)}
  else if(a==='cancelm'){editM=null;render()}
- else if(a==='delm'){if(confirm('Delete this person?')){S.members=S.members.filter(function(t){return t.id!==id});save();render(true)}}
- else if(a==='addpay'){x=byId(S.members,id);var v=prompt('Amount received from '+x.name+' ('+S.cur+')');if(v!==null){var n=num(v);if(n>0){x.paid=num(x.paid)+n;save();render(true);toast('Payment recorded')}}}
+ else if(a==='delm'){if(confirm(tr('Delete this person?'))){S.members=S.members.filter(function(t){return t.id!==id});save();render(true)}}
+ else if(a==='addpay'){x=byId(S.members,id);var v=prompt(tf('Amount received from {0} ({1})',[x.name,S.cur]));if(v!==null){var n=num(v);if(n>0){x.paid=num(x.paid)+n;save();render(true);toast('Payment recorded')}}}
  else if(a==='copy'){copy(S.pay[el.getAttribute('data-key')]||'')}
  else if(a==='copysum'){copy(summaryText())}
  else if(a==='ics'){makeICS()}
@@ -250,17 +407,32 @@ document.addEventListener('click',function(e){
  else if(a==='delv'){S.vendors=S.vendors.filter(function(t){return t.id!==id});save();render(true)}
  else if(a==='vsnext'){x=byId(S.venues,id);x.status=cycle(STAT,x.status);save();render(true)}
  else if(a==='delvn'){S.venues=S.venues.filter(function(t){return t.id!==id});save();render(true)}
+ else if(a==='wzopen'){W=null;wizInit();render();window.scrollTo(0,0)}
+ else if(a==='wzpick'){var wk=el.getAttribute('data-k'),wv=el.getAttribute('data-v');if(wk==='reception')W.reception=wv==='1';else if(wk==='guests')W.guests=parseInt(wv,10)||0;render(true)}
+ else if(a==='wztoggle'){var ck=el.getAttribute('data-v');W.cers[ck]=!W.cers[ck];render(true)}
+ else if(a==='wznext'){if(W.step===1&&!Object.keys(W.cers).some(function(q){return W.cers[q]})){toast('Choose at least one, or skip the questions');return}W.step++;render();window.scrollTo(0,0)}
+ else if(a==='wzback'){W.step=Math.max(0,W.step-1);render();window.scrollTo(0,0)}
+ else if(a==='wzskip'){S.setup=true;W=null;tab='home';save();render();window.scrollTo(0,0);toast('You can tailor your plan any time from Home or Settings')}
+ else if(a==='wzfinish'){
+  var gv=function(i){var n=document.getElementById(i);return n?n.value:''};
+  S.names=gv('wz_names').trim();S.date=gv('wz_date');if(gv('wz_total'))S.total=gv('wz_total');
+  S.region=W.region;S.cur=W.cur;S.cur2=S.cur==='USD'?'EUR':'USD';S.guestTarget=W.guests;
+  S.ceremonies.forEach(function(c){c.on=c.id==='reception'?W.reception:!!W.cers[c.id]});
+  S.setup=true;W=null;tab='home';save();render();window.scrollTo(0,0);toast('All set. Enjoy planning!')}
+ else if(a==='vtab'){vtab=el.getAttribute('data-v');render(true)}
+ else if(a==='savep'){var pv=(PARTNERS.vendors||[])[parseInt(el.getAttribute('data-i'),10)];if(pv){S.vendors.push({id:uid(),name:String(pv.name||''),cat:String(pv.category||'Other'),phone:pv.whatsapp?'+'+String(pv.whatsapp).replace(/\D/g,''):String(pv.phone||''),status:'Shortlist',quote:'',paid:'',notes:'From the Jane Cool list'});save();toast('Saved to My vendors')}}
  else if(a==='export'){download('bride-villa-backup.json','application/json',JSON.stringify(S,null,1))}
  else if(a==='print'){window.print()}
  else if(a==='csvg'){exportGuests()}
  else if(a==='csvb'){exportBudget()}
  else if(a==='csvp'){exportPledges()}
- else if(a==='reset'){if(confirm('Erase everything on this device? Export a backup first if unsure.')){S=def();save();render();toast('Erased')}}
+ else if(a==='reset'){if(confirm(tr('Erase everything on this device? Export a backup first if unsure.'))){var keepL=S.lang;S=def();S.lang=keepL;save();render();toast('Erased')}}
 });
 
 document.addEventListener('submit',function(e){
  var f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();
  var k=f.getAttribute('data-form'),o=fd(f);
+ if(k==='join'){joinSend(o);return}
  if(k==='task'){S.tasks.push({id:uid(),cer:o.cer,text:o.text.trim(),done:false});toast('Task added')}
  else if(k==='total'){S.total=o.total}
  else if(k==='budget'){S.budget.push({id:uid(),name:o.name.trim(),cat:o.cat,cer:o.cer,planned:o.planned,paid:o.paid,cur:o.cur});toast('Item added')}
@@ -285,7 +457,7 @@ document.addEventListener('submit',function(e){
  else if(k==='venue'){S.venues.push({id:uid(),name:o.name.trim(),area:o.area,cer:o.cer,status:o.status,phone:o.phone,cost:o.cost,notes:o.notes});toast('Venue added')}
  else if(k==='settings'){
   S.names=o.names.trim();S.date=o.date;S.region=o.region;
-  S.cur=(o.cur||'').trim().toUpperCase()||REGIONS[o.region].cur;S.cur2=(o.cur2||'').trim().toUpperCase()||'USD';S.rate=o.rate;S.inviteTpl=o.inviteTpl;
+  S.cur=(o.cur||'').trim().toUpperCase()||REGIONS[o.region].cur;S.cur2=(o.cur2||'').trim().toUpperCase()||'USD';S.rate=o.rate;S.inviteTpl=isDefaultTpl(o.inviteTpl)?DEFAULT_TPL:o.inviteTpl;
   S.ceremonies.forEach(function(c){c.on=o['cer_'+c.id]!==undefined});toast('Settings saved');
  }
  save();render(true);
@@ -293,6 +465,9 @@ document.addEventListener('submit',function(e){
 
 document.addEventListener('change',function(e){
  var t=e.target;
+ if(t.hasAttribute('data-wzf')&&W){var f=t.getAttribute('data-wzf');if(f==='region'){W.region=t.value;if(REGIONS[t.value])W.cur=REGIONS[t.value].cur;render(true)}else{W[f]=t.value}return}
+ if(t.hasAttribute('data-pcat')){pcat=t.value;render(true);return}
+ if(t.hasAttribute('data-parea')){parea=t.value;render(true);return}
  if(t.hasAttribute('data-filter')){gFilter[t.getAttribute('data-filter')]=t.value;render(true);return}
  if(t.hasAttribute('data-priv')){S.priv[t.getAttribute('data-priv')]=t.checked;save();render(true);return}
  if(t.hasAttribute('data-pay')){S.pay[t.getAttribute('data-pay')]=t.value.trim();save();render(true);return}
@@ -307,6 +482,7 @@ document.addEventListener('input',function(e){
 
 S=load();
 render();
+loadPartners();
 if('serviceWorker' in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(function(){})}
 window.__bv={get:function(){return S},normPhone:normPhone,waLink:waLink,summaryText:summaryText};
 })();

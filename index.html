@@ -13,8 +13,9 @@
 <body>
 <header class="top">
   <div class="wrap">
-    <a class="logo" href="#home" aria-label="Jane Cool, Bride Villa">Bride <span class="v">V</span>illa</a>
-    <p class="tag"><b>Jane Cool</b> | Plan your wedding your way</p>
+    <div id="langbar" class="langbar"></div>
+    <a class="logo" href="#home" aria-label="Jane Cool"><span class="j">J</span>ane Cool</a>
+    <p class="tag"><span class="villa">Bride <span class="v">V</span>illa</span> | Plan your wedding your way</p>
     <nav id="tabs" aria-label="Sections">
       <button data-tab="home">Home</button>
       <button data-tab="checklist">Checklist</button>
@@ -23,13 +24,15 @@
       <button data-tab="committee">Committee</button>
       <button data-tab="vendors">Vendors</button>
       <button data-tab="venues">Venues</button>
+      <button data-tab="shop">Shop</button>
       <button data-tab="settings">Settings</button>
     </nav>
   </div>
 </header>
 <main class="wrap" id="app"></main>
-<footer class="wrap foot">Jane Cool is free, made in loving memory of Jane. Your plan is saved only on this device. Bride Villa never holds or moves money.</footer>
+<footer class="wrap foot">Jane Cool, made in loving memory of Jane. Your plan is saved only on this device. Bride Villa never holds or moves money.</footer>
 <div id="toast" class="toast" role="status"></div>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
